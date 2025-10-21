@@ -18,7 +18,6 @@
         function Config() {
             this.baseUrl = "/";
             this.loginUrl = "/auth/login";
-            this.signupUrl = "/auth/signup";
             this.unlinkUrl = "/auth/unlink/";
             this.tokenName = "token";
             this.tokenPrefix = "satellizer";
@@ -159,6 +158,19 @@
                         return encodeURIComponent(Math.random().toString(36).substr(2));
                     },
                 },
+                oauth2: {
+                    name: 'aad', // whatever you want to call it
+                    clientId:
+                        'ClientID', // this must be an app registered inside the Office 365 account, not a personal account
+                    url: '/auth/aad',
+                    authorizationEndpoint:
+                        'https://login.microsoftonline.com/TenantID/oauth2/authorize',
+                    redirectUri: window.location.origin + '/', //for Cordova apps
+                    requiredUrlParams: ['scope'],
+                    //scope: ['user.read'],
+                    scopeDelimiter: ' ',
+                    oauthType: '2.0'
+                }
             };
             this.httpInterceptor = function () {
                 return true;
@@ -193,16 +205,6 @@
             },
             set: function (value) {
                 this.SatellizerConfig.loginUrl = value;
-            },
-            enumerable: true,
-            configurable: true,
-        });
-        Object.defineProperty(AuthProvider.prototype, "signupUrl", {
-            get: function () {
-                return this.SatellizerConfig.signupUrl;
-            },
-            set: function (value) {
-                this.SatellizerConfig.signupUrl = value;
             },
             enumerable: true,
             configurable: true,
@@ -350,9 +352,6 @@
             return {
                 login: function (user, options) {
                     return SatellizerLocal.login(user, options);
-                },
-                signup: function (user, options) {
-                    return SatellizerLocal.signup(user, options);
                 },
                 logout: function () {
                     return SatellizerShared.logout();
@@ -579,18 +578,6 @@
                 _this.SatellizerShared.setToken(response);
                 return response;
             });
-        };
-        Local.prototype.signup = function (user, options) {
-            if (options === void 0) {
-                options = {};
-            }
-            options.url = options.url
-                ? options.url
-                : joinUrl(this.SatellizerConfig.baseUrl, this.SatellizerConfig.signupUrl);
-            options.data = user || options.data;
-            options.method = options.method || "POST";
-            options.withCredentials = options.withCredentials || this.SatellizerConfig.withCredentials;
-            return this.$http(options);
         };
         Local.$inject = ["$http", "SatellizerConfig", "SatellizerShared"];
         return Local;
