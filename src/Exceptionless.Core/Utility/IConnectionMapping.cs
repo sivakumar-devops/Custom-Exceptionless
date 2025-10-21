@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 
 namespace Exceptionless.Core.Utility;
 
@@ -13,15 +13,21 @@ public interface IConnectionMapping
 public class ConnectionMapping : IConnectionMapping
 {
     private readonly ConcurrentDictionary<string, HashSet<string>> _connections = new();
+    private readonly ConcurrentDictionary<string, object> _keyLocks = new();
 
     public Task AddAsync(string key, string connectionId)
     {
         if (key is null)
             return Task.CompletedTask;
 
+        var keyLock = _keyLocks.GetOrAdd(key, _ => new object());
+
         _connections.AddOrUpdate(key, [.. new[] { connectionId }], (_, hs) =>
         {
-            hs.Add(connectionId);
+            lock (keyLock)
+            {
+                hs.Add(connectionId);
+            }
             return hs;
         });
 
@@ -67,6 +73,9 @@ public class ConnectionMapping : IConnectionMapping
 
         if (_connections.TryRemove(key, out var connections) && connections.Count > 0)
             _connections.TryAdd(key, connections);
+
+        // Remove from _keyLocks as well
+        _keyLocks.TryRemove(key, out _);
 
         return Task.CompletedTask;
     }
