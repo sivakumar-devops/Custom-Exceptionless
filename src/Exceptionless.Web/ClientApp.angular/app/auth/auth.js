@@ -44,14 +44,6 @@
                     template: '<ui-view autoscroll="true" />',
                 });
 
-                $stateProvider.state("auth.forgot-password", {
-                    title: "Forgot Password",
-                    url: "/forgot-password",
-                    controller: "auth.ForgotPassword",
-                    controllerAs: "vm",
-                    templateUrl: "app/auth/forgot-password.tpl.html",
-                });
-
                 $stateProvider.state("auth.login", {
                     title: "Login",
                     url: "/login?token",
@@ -66,22 +58,7 @@
                     template: null,
                     controller: "auth.Logout",
                 });
-
-                $stateProvider.state("auth.reset-password", {
-                    title: "Reset Password",
-                    url: "/reset-password/:token?cancel",
-                    controller: "auth.ResetPassword",
-                    controllerAs: "vm",
-                    templateUrl: "app/auth/reset-password.tpl.html",
-                });
-
-                $stateProvider.state("auth.signup", {
-                    title: "Signup",
-                    url: "/signup?token",
-                    controller: "auth.Signup",
-                    controllerAs: "vm",
-                    templateUrl: "app/auth/signup.tpl.html",
-                });
+                
             }
         );
 })();
