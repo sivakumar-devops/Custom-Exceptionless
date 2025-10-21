@@ -87,16 +87,6 @@
                 return Restangular.one("auth", "reset-password").customPOST(resetPasswordModel);
             }
 
-            function signup(user) {
-                function onSuccess(response) {
-                    $auth.setToken(response.data.token);
-                    onLoginSuccess(user);
-                    return response;
-                }
-
-                return $auth.signup(user).then(onSuccess);
-            }
-
             function unlink(providerName, providerUserId) {
                 function onSuccess(response) {
                     $auth.setToken(response.data.token);
@@ -120,7 +110,6 @@
                 login: login,
                 logout: logout,
                 resetPassword: resetPassword,
-                signup: signup,
                 unlink: unlink,
             };
 
