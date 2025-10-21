@@ -1,4 +1,4 @@
-﻿using Exceptionless.Core.Extensions;
+using Exceptionless.Core.Extensions;
 using Foundatio.Utility;
 using Microsoft.Extensions.Configuration;
 
@@ -25,6 +25,10 @@ public class AuthOptions
 
     public string? GoogleSecret { get; internal set; }
 
+    public string? AADAppId { get; private set; }
+
+    public string? AADAppSecret { get; private set; }
+
     public string? LdapConnectionString { get; internal set; }
 
     public static AuthOptions ReadFromConfiguration(IConfiguration config)
@@ -45,6 +49,8 @@ public class AuthOptions
         options.FacebookSecret = oAuth.GetString(nameof(options.FacebookSecret));
         options.GitHubId = oAuth.GetString(nameof(options.GitHubId));
         options.GitHubSecret = oAuth.GetString(nameof(options.GitHubSecret));
+        options.AADAppId = oAuth.GetString(nameof(options.AADAppId));
+        options.AADAppSecret = oAuth.GetString(nameof(options.AADAppSecret));
 
         return options;
     }
