@@ -13,6 +13,8 @@
     <EmbeddedResource Include="wwwroot\docs.css" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.0.4" />
+    <PackageReference Include="AWSSDK.SimpleEmail" Version="4.0.0.4" />
     <PackageReference Include="Exceptionless.AspNetCore" Version="6.1.0" />
     <PackageReference Include="Joonasw.AspNetCore.SecurityHeaders" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.9" />
