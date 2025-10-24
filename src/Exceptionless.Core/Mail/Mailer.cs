@@ -6,6 +6,7 @@ using Exceptionless.Core.Queues.Models;
 using Exceptionless.DateTimeExtensions;
 using Foundatio.Queues;
 using HandlebarsDotNet;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Exceptionless.Core.Mail;
@@ -18,14 +19,15 @@ public class Mailer : IMailer
     private readonly AppOptions _appOptions;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger _logger;
-
-    public Mailer(IQueue<MailMessage> queue, FormattingPluginManager pluginManager, AppOptions appOptions, TimeProvider timeProvider, ILogger<Mailer> logger)
+    private readonly AWSEmail _awsEmail;
+    public Mailer(IQueue<MailMessage> queue, FormattingPluginManager pluginManager, AppOptions appOptions, TimeProvider timeProvider, ILogger<Mailer> logger, AWSEmail email)
     {
         _queue = queue;
         _pluginManager = pluginManager;
         _appOptions = appOptions;
         _timeProvider = timeProvider;
         _logger = logger;
+        _awsEmail = email;
     }
 
     public async Task<bool> SendEventNoticeAsync(User user, PersistentEvent ev, Project project, bool isNew, bool isRegression, int totalOccurrences)
@@ -59,12 +61,12 @@ public class Mailer : IMailer
         AddUserInfo(ev, messageData);
 
         const string template = "event-notice";
-        await QueueMessageAsync(new MailMessage
+        await _awsEmail.SendAsync(new MailMessage
         {
             To = user.EmailAddress,
             Subject = $"[{project.Name}] {result.Subject}",
             Body = RenderTemplate(template, messageData)
-        }, template);
+        });
         return true;
     }
 
@@ -120,13 +122,12 @@ public class Mailer : IMailer
                 { "OrganizationId", organization.Id },
                 { "OrganizationName", organization.Name }
             };
-
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = user.EmailAddress,
             Subject = subject,
             Body = RenderTemplate(template, data)
-        }, template);
+        });
     }
 
     public Task SendOrganizationInviteAsync(User sender, Organization organization, Invite invite)
@@ -140,12 +141,12 @@ public class Mailer : IMailer
             };
 
         string body = RenderTemplate(template, data);
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = invite.EmailAddress,
             Subject = subject,
             Body = body
-        }, template);
+        });
     }
 
     public Task SendOrganizationNoticeAsync(User user, Organization organization, bool isOverMonthlyLimit, bool isOverHourlyLimit)
@@ -165,12 +166,12 @@ public class Mailer : IMailer
                 { "ThrottledUntil", _timeProvider.GetUtcNow().UtcDateTime.StartOfHour().AddHours(1).ToShortTimeString() }
             };
 
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = user.EmailAddress,
             Subject = subject,
             Body = RenderTemplate(template, data)
-        }, template);
+        });
     }
 
     public Task SendOrganizationPaymentFailedAsync(User owner, Organization organization)
@@ -184,12 +185,12 @@ public class Mailer : IMailer
                 { "OrganizationName", organization.Name }
             };
 
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = owner.EmailAddress,
             Subject = subject,
             Body = RenderTemplate(template, data)
-        }, template);
+        });
     }
 
     public Task SendProjectDailySummaryAsync(User user, Project project, IEnumerable<Stack>? mostFrequent, IEnumerable<Stack>? newest, DateTime startDate, bool hasSubmittedEvents, double count, double uniqueCount, double newCount, double fixedCount, int blockedCount, int tooBigCount, bool isFreePlan)
@@ -215,12 +216,12 @@ public class Mailer : IMailer
                 { "IsFreePlan", isFreePlan }
             };
 
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = user.EmailAddress,
             Subject = subject,
             Body = RenderTemplate(template, data)
-        }, template);
+        });
     }
 
     private static IEnumerable<object> GetStackTemplateData(IEnumerable<Stack> stacks)
@@ -248,12 +249,12 @@ public class Mailer : IMailer
                 { "UserVerifyEmailAddressToken", user.VerifyEmailAddressToken }
             };
 
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = user.EmailAddress,
             Subject = subject,
             Body = RenderTemplate(template, data)
-        }, template);
+        });
     }
 
     public Task SendUserPasswordResetAsync(User user)
@@ -270,12 +271,12 @@ public class Mailer : IMailer
                 { "UserPasswordResetToken", user.PasswordResetToken }
             };
 
-        return QueueMessageAsync(new MailMessage
+        return _awsEmail.SendAsync(new MailMessage
         {
             To = user.EmailAddress,
             Subject = subject,
             Body = RenderTemplate(template, data)
-        }, template);
+        });
     }
 
     private string RenderTemplate(string name, IDictionary<string, object?> data)

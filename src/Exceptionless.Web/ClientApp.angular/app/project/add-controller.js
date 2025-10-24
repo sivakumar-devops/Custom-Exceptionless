@@ -74,8 +74,8 @@
                         }
 
                         var message = translateService.T("An error occurred while creating the organization.");
-                        if (response.data && response.data.message) {
-                            message += " " + translateService.T("Message:") + " " + response.data.message;
+                        if (response.data && response.data.title) {
+                            message = response.data.title;
                         }
 
                         notificationService.error(message);

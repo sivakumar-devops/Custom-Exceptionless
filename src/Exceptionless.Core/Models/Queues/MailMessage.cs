@@ -1,4 +1,4 @@
-﻿namespace Exceptionless.Core.Queues.Models;
+namespace Exceptionless.Core.Queues.Models;
 
 public record MailMessage
 {
@@ -6,4 +6,5 @@ public record MailMessage
     public string? From { get; set; }
     public required string Subject { get; set; }
     public required string Body { get; set; }
+    public object? Data { get; set; }
 }

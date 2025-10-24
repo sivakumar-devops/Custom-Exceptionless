@@ -7,7 +7,14 @@ ConnectionStrings:
 #  Storage: ''
 #  Email: 'smtps://user:password@domain.com:587'
 #  LDAP: ''
-  OAuth: FacebookId=395178683904310;GitHubId=7ef1dd5bfbc4ccf7f5ef;GoogleId=809763155066-enkkdmt4ierc33q9cft9nf5d5c02h30q.apps.googleusercontent.com;MicrosoftId=000000004C137E8B;SlackId=34500115540.177239122322;
+  OAuth: FacebookId=395178683904310;GitHubId=7ef1dd5bfbc4ccf7f5ef;GoogleId=809763155066-enkkdmt4ierc33q9cft9nf5d5c02h30q.apps.googleusercontent.com;MicrosoftId=000000004C137E8B; AADAppId=29d1a9be--c2f9631141c9; AADAppSecret=wIZ8Q~jyc~-nu3heaDYtRRedtm; SlackId=34500115540.177239122322;
+  Hcp:
+    ClientId: 6eXwtHXrLDrdFnv
+    ClientSecret: dk027PWND-7Gi3gk0rudggubk-0Ge9JYjGo8
+    OrgId: 3baadc3797fb
+    ProjectId: 4dbc-9ce6-6d8ebf9699f2
+    AppName: SyncfusionSupport
+    SecretName: syncfusion_dev_ses
 
 # Base url for the ui used to build links in emails and other places.
 BaseURL: https://be.exceptionless.io

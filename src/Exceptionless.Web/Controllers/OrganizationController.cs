@@ -169,7 +169,7 @@ public class OrganizationController : RepositoryApiController<IOrganizationRepos
     /// Remove
     /// </summary>
     /// <param name="ids">A comma-delimited list of organization identifiers.</param>
-    /// <response code="202">Accepted</response>
+    /// <response code="204">No Content.</response>
     /// <response code="400">One or more validation errors occurred.</response>
     /// <response code="404">One or more organizations were not found.</response>
     /// <response code="500">An error occurred while deleting one or more organizations.</response>
@@ -724,6 +724,13 @@ public class OrganizationController : RepositoryApiController<IOrganizationRepos
 
     protected override async Task<PermissionResult> CanAddAsync(Organization value)
     {
+        // Restrict adding new organizations to specific email addresses
+        var allowedEmails = new List<string> { "sivakumar.ravindran@syncfusion.com", "priya.sunilkumar@syncfusion.com", "vinothkrishnamoorthy@syncfusion.com" };
+        if (!allowedEmails.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        {
+            return PermissionResult.DenyWithMessage("You do not have permission to add a new organization.");
+        }
+
         if (String.IsNullOrEmpty(value.Name))
             return PermissionResult.DenyWithMessage("Organization name is required.");
 

@@ -2,6 +2,8 @@ using System.Diagnostics;
 using Exceptionless.Core;
 using Exceptionless.Core.Configuration;
 using Exceptionless.Core.Extensions;
+using Exceptionless.Core.Mail;
+using Exceptionless.Core.Models;
 using Exceptionless.Insulation.Configuration;
 using OpenTelemetry;
 using Serilog;
@@ -47,6 +49,8 @@ public class Program
             .AddCustomEnvironmentVariables()
             .AddCommandLine(args)
             .Build();
+        // Before building the host
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", environment);
 
         return CreateHostBuilder(config, environment);
     }
@@ -101,6 +105,10 @@ public class Program
                 services.AddSingleton(apmConfig);
                 services.AddAppOptions(options);
                 services.AddHttpContextAccessor();
+                services.Configure<HcpSettings>(ctx.Configuration.GetSection("ConnectionStrings:Hcp"));
+                services.AddHttpClient<HcpSecretsService>();
+                services.AddTransient<AWSEmail>();
+                services.AddTransient<IMailer, Mailer>();
             })
             .AddApm(apmConfig);
 
