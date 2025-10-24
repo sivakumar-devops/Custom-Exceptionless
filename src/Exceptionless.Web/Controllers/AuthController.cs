@@ -5,6 +5,7 @@ using Exceptionless.Core.Configuration;
 using Exceptionless.Core.Extensions;
 using Exceptionless.Core.Mail;
 using Exceptionless.Core.Models;
+using Exceptionless.Web.Utility;
 using Exceptionless.Core.Repositories;
 using Exceptionless.DateTimeExtensions;
 using Exceptionless.Web.Extensions;
@@ -365,6 +366,27 @@ public class AuthController : ExceptionlessApiController
         );
     }
 
+    /// <summary>
+    /// Sign in with AAD
+    /// </summary>
+    /// <response code="200">User Authentication Token</response>
+    /// <response code="403">Account Creation is currently disabled</response>
+    /// <response code="422">Validation error</response>
+    [AllowAnonymous]
+    [Consumes("application/json")]
+    [HttpPost("aad")]
+    public Task<ActionResult<TokenResult>> AADAsync(ExternalAuthInfo value)
+    {
+        return ExternalLoginAsync(value,
+            _authOptions.AADAppId,
+            _authOptions.AADAppSecret,
+            (f, c) =>
+            {
+                c.Scope = "openid email profile";
+                return new AADClient(f, c);
+            }
+        );
+    }
     /// <summary>
     /// Removes an external login provider from the account
     /// </summary>
