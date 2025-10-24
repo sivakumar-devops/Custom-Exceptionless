@@ -52,5 +52,5 @@
     <Content Include="Mail/Templates/*.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-  </ItemGroup
+  </ItemGroup>
 </Project>
