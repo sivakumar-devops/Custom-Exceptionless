@@ -1,11 +1,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /app
 
-COPY ./*.slnx ./NuGet.Config ./
+COPY ./*.sln ./NuGet.Config ./
 COPY ./src/*.props ./src/
 COPY ./tests/*.props ./tests/
 COPY ./build/packages/* ./build/packages/
-
+# Copy the Mail Templates
+COPY src/Exceptionless.Core/Mail/Templates /app/src/Exceptionless.Core/Mail/Templates
 # Copy the main source project files
 COPY src/*/*.csproj ./
 RUN for file in $(ls *.csproj); do mkdir -p src/${file%.*}/ && mv $file src/${file%.*}/; done
