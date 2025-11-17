@@ -1,4 +1,4 @@
-﻿using Exceptionless.Core;
+using Exceptionless.Core;
 using Exceptionless.Core.Billing;
 using Exceptionless.Core.Extensions;
 using Exceptionless.Core.Jobs;
@@ -40,7 +40,7 @@ public sealed class MailerTests : TestWithServices
         _plans = GetService<BillingPlans>();
 
         if (_mailer is NullMailer)
-            _mailer = new Mailer(GetService<IQueue<MailMessage>>(), GetService<FormattingPluginManager>(), _options, TimeProvider, Log.CreateLogger<Mailer>(), GetService<AWSEmail>());
+            _mailer = new Mailer(GetService<IQueue<MailMessage>>(), GetService<FormattingPluginManager>(), _options, TimeProvider, Log.CreateLogger<Mailer>());
     }
 
     [Fact]
