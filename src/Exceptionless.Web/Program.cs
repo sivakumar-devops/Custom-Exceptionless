@@ -105,10 +105,6 @@ public class Program
                 services.AddSingleton(apmConfig);
                 services.AddAppOptions(options);
                 services.AddHttpContextAccessor();
-                services.Configure<HcpSettings>(ctx.Configuration.GetSection("ConnectionStrings:Hcp"));
-                services.AddHttpClient<HcpSecretsService>();
-                services.AddTransient<AWSEmail>();
-                services.AddTransient<IMailer, Mailer>();
             })
             .AddApm(apmConfig);
 
