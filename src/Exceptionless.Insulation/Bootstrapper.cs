@@ -339,14 +339,9 @@ public class Bootstrapper
     {
         string accessKey = data.GetString("accesskey");
         string secretKey = data.GetString("secretkey");
-        if (String.IsNullOrEmpty(accessKey)
-            || String.IsNullOrEmpty(secretKey))
-        {
-            var credentials = DefaultAWSCredentialsIdentityResolver.GetCredentials();
-            return credentials;
-            //return FallbackCredentialsFactory.GetCredentials();
-        }
+        if (!String.IsNullOrEmpty(accessKey) && !String.IsNullOrEmpty(secretKey))
+            return new BasicAWSCredentials(accessKey, secretKey);
 
-        return new BasicAWSCredentials(accessKey, secretKey);
+        return DefaultAWSCredentialsIdentityResolver.GetCredentials();
     }
 }
