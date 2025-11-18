@@ -725,8 +725,9 @@ public class OrganizationController : RepositoryApiController<IOrganizationRepos
     protected override async Task<PermissionResult> CanAddAsync(Organization value)
     {
         // Restrict adding new organizations to specific email addresses
-        var allowedEmails = new List<string> { "sivakumar.ravindran@syncfusion.com", "priya.sunilkumar@syncfusion.com", "vinothkrishnamoorthy@syncfusion.com" };
-        if (!allowedEmails.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        var allowedUsers = GetAllowedUsers();
+
+        if (!allowedUsers.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
         {
             return PermissionResult.DenyWithMessage("You do not have permission to add a new organization.");
         }
@@ -764,6 +765,13 @@ public class OrganizationController : RepositoryApiController<IOrganizationRepos
 
     protected override async Task<PermissionResult> CanUpdateAsync(Organization original, Delta<NewOrganization> changes)
     {
+        // Allowed editors list
+        var allowedUsers = GetAllowedUsers();
+
+        if (!allowedUsers.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        {
+            return PermissionResult.DenyWithMessage("You do not have permission to edit this organization.");
+        }
         var changed = changes.GetEntity();
         if (!await IsOrganizationNameAvailableInternalAsync(changed.Name))
             return PermissionResult.DenyWithMessage("A organization with this name already exists.");
@@ -773,6 +781,13 @@ public class OrganizationController : RepositoryApiController<IOrganizationRepos
 
     protected override async Task<PermissionResult> CanDeleteAsync(Organization value)
     {
+        // Allowed Deleter list
+        var allowedUsers = GetAllowedUsers();
+
+        if (!allowedUsers.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        {
+            return PermissionResult.DenyWithMessage("You do not have permission to delete this organization.");
+        }
         if (!String.IsNullOrEmpty(value.StripeCustomerId) && !User.IsInRole(AuthorizationRoles.GlobalAdmin))
             return PermissionResult.DenyWithMessage("An organization cannot be deleted if it has a subscription.", value.Id);
 
@@ -781,6 +796,25 @@ public class OrganizationController : RepositoryApiController<IOrganizationRepos
             return PermissionResult.DenyWithMessage("An organization cannot be deleted if it contains any projects.", value.Id);
 
         return await base.CanDeleteAsync(value);
+    }
+
+    private IReadOnlyCollection<string> GetAllowedUsers()
+    {
+        var defaultAllowed = new[]
+        {
+            "sivakumar.ravindran@syncfusion.com",
+            "priya.sunilkumar@syncfusion.com",
+            "vinothkrishnamoorthy@syncfusion.com"
+        };
+
+        var raw = Environment.GetEnvironmentVariable("ORG_ALLOWED_USERS");
+        if (String.IsNullOrWhiteSpace(raw))
+            return defaultAllowed;
+
+        return raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(e => e.Trim())
+                .Where(e => !String.IsNullOrEmpty(e))
+                .ToList();
     }
 
     protected override async Task AfterResultMapAsync<TDestination>(ICollection<TDestination> models)

@@ -737,6 +737,12 @@ public class ProjectController : RepositoryApiController<IProjectRepository, Pro
 
     protected override async Task<PermissionResult> CanAddAsync(Project value)
     {
+        var allowedUsers = GetProjectAllowedUsers();
+
+        if (!allowedUsers.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        {
+            return PermissionResult.DenyWithMessage("You do not have permission to create projects.");
+        }
         if (String.IsNullOrEmpty(value.Name))
             return PermissionResult.DenyWithMessage("Project name is required.");
 
@@ -762,11 +768,29 @@ public class ProjectController : RepositoryApiController<IProjectRepository, Pro
 
     protected override async Task<PermissionResult> CanUpdateAsync(Project original, Delta<UpdateProject> changes)
     {
+        var allowedUsers = GetProjectAllowedUsers();
+
+        if (!allowedUsers.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        {
+            return PermissionResult.DenyWithMessage("You do not have permission to edit projects.");
+        }
         var changed = changes.GetEntity();
         if (changes.ContainsChangedProperty(p => p.Name) && !await IsProjectNameAvailableInternalAsync(original.OrganizationId, changed.Name))
             return PermissionResult.DenyWithMessage("A project with this name already exists.");
 
         return await base.CanUpdateAsync(original, changes);
+    }
+
+    protected override async Task<PermissionResult> CanDeleteAsync(Project value)
+    {
+        var allowedUsers = GetProjectAllowedUsers();
+
+        if (!allowedUsers.Contains(CurrentUser.EmailAddress, StringComparer.OrdinalIgnoreCase))
+        {
+            return PermissionResult.DenyWithMessage("You do not have permission to delete projects.");
+        }
+
+        return await base.CanDeleteAsync(value);
     }
 
     private Task<Organization?> GetOrganizationAsync(string organizationId, bool useCache = true)
@@ -780,6 +804,25 @@ public class ProjectController : RepositoryApiController<IProjectRepository, Pro
     private async Task<ViewProject> PopulateProjectStatsAsync(ViewProject project)
     {
         return (await PopulateProjectStatsAsync([project])).Single();
+    }
+
+    private IReadOnlyCollection<string> GetProjectAllowedUsers()
+    {
+        var defaultAllowed = new[]
+        {
+            "sivakumar.ravindran@syncfusion.com",
+            "priya.sunilkumar@syncfusion.com",
+            "vinothkrishnamoorthy@syncfusion.com"
+        };
+
+        var raw = Environment.GetEnvironmentVariable("PROJECT_ALLOWED_USERS");
+        if (String.IsNullOrWhiteSpace(raw))
+            return defaultAllowed;
+
+        return raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(e => e.Trim())
+                .Where(e => !String.IsNullOrEmpty(e))
+                .ToList();
     }
 
     private async Task<List<ViewProject>> PopulateProjectStatsAsync(List<ViewProject> viewProjects)
