@@ -160,8 +160,7 @@
                 },
                 oauth2: {
                     name: 'aad', // whatever you want to call it
-                    clientId:
-                        'ClientID', // this must be an app registered inside the Office 365 account, not a personal account
+                    clientId: 'ClientID', // this must be an app registered inside the Office 365 account, not a personal account
                     url: '/auth/aad',
                     authorizationEndpoint:
                         'https://login.microsoftonline.com/TenantID/oauth2/authorize',
