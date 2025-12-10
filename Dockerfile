@@ -22,7 +22,7 @@ COPY . .
 
 # Install Node + npm for SPA build
 RUN apt-get update -yq && \
-    curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
+    curl -sL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -yq nodejs
 
 # Install Angular & React UI dependencies
