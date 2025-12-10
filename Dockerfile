@@ -19,6 +19,21 @@ RUN dotnet restore
 
 # Copy everything else and build app
 COPY . .
+
+# Install Node + npm for SPA build
+RUN apt-get update -yq && \
+    curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -yq nodejs
+
+# Install Angular & React UI dependencies
+WORKDIR /app/src/Exceptionless.Web/ClientApp
+RUN npm install
+
+WORKDIR /app/src/Exceptionless.Web/ClientApp.angular
+RUN npm install
+
+WORKDIR /app
+
 RUN dotnet build -c Release
 
 # testrunner
