@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Exceptionless.Core.Jobs;
 
-[Job(Description = "Update event occurrence count for stacks.", InitialDelay = "2s", Interval = "5s")]
+[Job(Description = "Update event occurrence count for stacks.", InitialDelay = "2s", Interval = "15s")]
 public class StackEventCountJob : JobWithLockBase, IHealthCheck
 {
     private readonly StackService _stackService;

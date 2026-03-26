@@ -144,7 +144,7 @@ public class Program
             services.AddJob<CleanupDataJob>();
 
         if (options is { CleanupOrphanedData: true, AllJobs: true })
-            services.AddCronJob<CleanupOrphanedDataJob>("45 */8 * * *");
+            services.AddCronJob<CleanupOrphanedDataJob>("0 3 * * *"); // run once daily at 3 AM (off-peak) instead of every 8 hours
         if (options is { CleanupOrphanedData: true, AllJobs: false })
             services.AddJob<CleanupOrphanedDataJob>();
 

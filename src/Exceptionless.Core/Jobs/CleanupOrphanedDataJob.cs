@@ -62,7 +62,7 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
     {
         // get approximate number of unique stack ids
         var stackCardinality = await _elasticClient.SearchAsync<PersistentEvent>(s => s.Aggregations(a => a
-            .Cardinality("cardinality_stack_id", c => c.Field(f => f.StackId).PrecisionThreshold(40000))));
+            .Cardinality("cardinality_stack_id", c => c.Field(f => f.StackId).PrecisionThreshold(10000))));
 
         double? uniqueStackIdCount = stackCardinality.Aggregations.Cardinality("cardinality_stack_id")?.Value;
         if (!uniqueStackIdCount.HasValue || uniqueStackIdCount.Value <= 0)
@@ -100,7 +100,14 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
 
             totalOrphanedEventCount += missingStackIds.Length;
             _logger.LogInformation("{BatchNumber}/{BatchCount}: Found {OrphanedEventCount} orphaned events from missing stacks {MissingStackIds} out of {StackIdCount}", batchNumber, buckets, missingStackIds.Length, missingStackIds, stackIds.Length);
-            await _elasticClient.DeleteByQueryAsync<PersistentEvent>(r => r.Query(q => q.Terms(t => t.Field(f => f.StackId).Terms(missingStackIds))));
+            await _elasticClient.DeleteByQueryAsync<PersistentEvent>(r => r
+                .Query(q => q.Terms(t => t.Field(f => f.StackId).Terms(missingStackIds)))
+                .WaitForCompletion(false)
+                .Scroll("2m")
+                .ScrollSize(100));
+
+            // throttle between batches to avoid saturating ES under load
+            await Task.Delay(TimeSpan.FromSeconds(2), context.CancellationToken);
         }
 
         _logger.LogInformation("Found {OrphanedEventCount} orphaned events from missing stacks out of {StackIdCount}", totalOrphanedEventCount, totalStackIds);
@@ -110,7 +117,7 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
     {
         // get approximate number of unique project ids
         var projectCardinality = await _elasticClient.SearchAsync<PersistentEvent>(s => s.Aggregations(a => a
-            .Cardinality("cardinality_project_id", c => c.Field(f => f.ProjectId).PrecisionThreshold(40000))));
+            .Cardinality("cardinality_project_id", c => c.Field(f => f.ProjectId).PrecisionThreshold(10000))));
 
         double? uniqueProjectIdCount = projectCardinality.Aggregations.Cardinality("cardinality_project_id")?.Value;
         if (!uniqueProjectIdCount.HasValue || uniqueProjectIdCount.Value <= 0)
@@ -146,7 +153,13 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
             }
 
             _logger.LogInformation("{BatchNumber}/{BatchCount}: Found {OrphanedEventCount} orphaned events from missing projects {MissingProjectIds} out of {ProjectIdCount}", batchNumber, buckets, missingProjectIds.Length, missingProjectIds, projectIds.Length);
-            await _elasticClient.DeleteByQueryAsync<PersistentEvent>(r => r.Query(q => q.Terms(t => t.Field(f => f.ProjectId).Terms(missingProjectIds))));
+            await _elasticClient.DeleteByQueryAsync<PersistentEvent>(r => r
+                .Query(q => q.Terms(t => t.Field(f => f.ProjectId).Terms(missingProjectIds)))
+                .WaitForCompletion(false)
+                .Scroll("2m")
+                .ScrollSize(100));
+
+            await Task.Delay(TimeSpan.FromSeconds(2), context.CancellationToken);
         }
 
         _logger.LogInformation("Found {OrphanedEventCount} orphaned events from missing projects out of {ProjectIdCount}", totalOrphanedEventCount, totalProjectIds);
@@ -156,7 +169,7 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
     {
         // get approximate number of unique organization ids
         var organizationCardinality = await _elasticClient.SearchAsync<PersistentEvent>(s => s.Aggregations(a => a
-            .Cardinality("cardinality_organization_id", c => c.Field(f => f.OrganizationId).PrecisionThreshold(40000))));
+            .Cardinality("cardinality_organization_id", c => c.Field(f => f.OrganizationId).PrecisionThreshold(10000))));
 
         double? uniqueOrganizationIdCount = organizationCardinality.Aggregations.Cardinality("cardinality_organization_id")?.Value;
         if (!uniqueOrganizationIdCount.HasValue || uniqueOrganizationIdCount.Value <= 0)
@@ -192,7 +205,13 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
             }
 
             _logger.LogInformation("{BatchNumber}/{BatchCount}: Found {OrphanedEventCount} orphaned events from missing organizations {MissingOrganizationIds} out of {OrganizationIdCount}", batchNumber, buckets, missingOrganizationIds.Length, missingOrganizationIds, organizationIds.Length);
-            await _elasticClient.DeleteByQueryAsync<PersistentEvent>(r => r.Query(q => q.Terms(t => t.Field(f => f.OrganizationId).Terms(missingOrganizationIds))));
+            await _elasticClient.DeleteByQueryAsync<PersistentEvent>(r => r
+                .Query(q => q.Terms(t => t.Field(f => f.OrganizationId).Terms(missingOrganizationIds)))
+                .WaitForCompletion(false)
+                .Scroll("2m")
+                .ScrollSize(100));
+
+            await Task.Delay(TimeSpan.FromSeconds(2), context.CancellationToken);
         }
 
         _logger.LogInformation("Found {OrphanedEventCount} orphaned events from missing organizations out of {OrganizationIdCount}", totalOrphanedEventCount, totalOrganizationIds);
@@ -215,8 +234,9 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
         long totalUpdatedEventCount = 0;
         var lastStatus = _timeProvider.GetUtcNow().UtcDateTime;
         int batch = 1;
+        const int maxBatches = 20; // guard against infinite loop if de-dup keeps finding new duplicates
 
-        while (buckets.Count > 0)
+        while (buckets.Count > 0 && batch <= maxBatches)
         {
             _logger.LogInformation($"Found {buckets.Count} duplicate stacks in batch #{batch}.");
             await RenewLockAsync(context);
@@ -278,6 +298,9 @@ public class CleanupOrphanedDataJob : JobWithLockBase, IHealthCheck
 
                     long eventsToMove = eventCountBuckets.Where(b => b.Key != targetStack.Id).Sum(b => b.Total) ?? 0;
                     _logger.LogInformation("De-duped stack: Target={TargetId} Events={EventCount} Dupes={DuplicateIds} HasEvents={HasEvents}", targetStack.Id, eventsToMove, duplicateStacks.Select(s => s.Id), shouldUpdateEvents);
+
+                    // throttle between duplicate stack fixes to avoid overwhelming ES
+                    await Task.Delay(TimeSpan.FromMilliseconds(500), context.CancellationToken);
 
                     if (shouldUpdateEvents)
                     {

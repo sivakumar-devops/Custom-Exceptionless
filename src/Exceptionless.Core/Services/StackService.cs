@@ -37,28 +37,37 @@ public class StackService
         );
     }
 
+    private const int MaxStacksPerBatch = 50;
+
     public async Task SaveStackUsagesAsync(bool sendNotifications = true, CancellationToken cancellationToken = default)
     {
         string occurrenceSetCacheKey = GetStackOccurrenceSetCacheKey();
         var stackUsageSet = await _cache.GetListAsync<(string OrganizationId, string ProjectId, string StackId)>(occurrenceSetCacheKey);
-        if (!stackUsageSet.HasValue)
+        if (!stackUsageSet.HasValue || stackUsageSet.Value.Count == 0)
             return;
 
-        foreach ((string? organizationId, string? projectId, string? stackId) in stackUsageSet.Value)
+        // Process in bounded batches to avoid unbounded memory/CPU growth under high load
+        var allEntries = stackUsageSet.Value.Take(MaxStacksPerBatch).ToList();
+        if (allEntries.Count < stackUsageSet.Value.Count)
+            _logger.LogWarning("Stack usage set has {TotalCount} entries; processing first {BatchSize} to avoid CPU spike", stackUsageSet.Value.Count, MaxStacksPerBatch);
+
+        // Process sequentially to avoid hammering Elasticsearch in parallel
+        foreach ((string? organizationId, string? projectId, string? stackId) in allEntries)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            var removeFromSetTask = _cache.ListRemoveAsync(occurrenceSetCacheKey, (organizationId, projectId, stackId));
             string countCacheKey = GetStackOccurrenceCountCacheKey(stackId);
-            var countTask = _cache.GetAsync<long>(countCacheKey, 0);
             string minDateCacheKey = GetStackOccurrenceMinDateCacheKey(stackId);
-            var minDateTask = _cache.GetUnixTimeMillisecondsAsync(minDateCacheKey, _timeProvider.GetUtcNow().UtcDateTime);
             string maxDateCacheKey = GetStackOccurrenceMaxDateCacheKey(stackId);
-            var maxDateTask = _cache.GetUnixTimeMillisecondsAsync(maxDateCacheKey, _timeProvider.GetUtcNow().UtcDateTime);
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            var countTask = _cache.GetAsync<long>(countCacheKey, 0);
+            var minDateTask = _cache.GetUnixTimeMillisecondsAsync(minDateCacheKey, now);
+            var maxDateTask = _cache.GetUnixTimeMillisecondsAsync(maxDateCacheKey, now);
 
             await Task.WhenAll(
-                removeFromSetTask,
+                _cache.ListRemoveAsync(occurrenceSetCacheKey, (organizationId, projectId, stackId)),
                 countTask,
                 minDateTask,
                 maxDateTask
@@ -95,9 +104,7 @@ public class StackService
             {
                 _logger.LogError(ex, "Error incrementing event count for organization: {OrganizationId} project:{ProjectId} stack:{StackId}", organizationId, projectId, stackId);
                 if (!shouldRetry)
-                {
                     await IncrementStackUsageAsync(organizationId, projectId, stackId, occurrenceMinDate, occurrenceMaxDate, occurrenceCount);
-                }
             }
         }
     }
